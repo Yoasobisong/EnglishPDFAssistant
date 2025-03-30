@@ -145,14 +145,22 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
         task['current_step'] = 0
         task['total_steps'] = 4  # PDF处理、文本提取、翻译、词汇
         
-        output_dir = app.config['UPLOAD_FOLDER']
+        # 创建以时间戳命名的子目录
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        pdf_basename = os.path.splitext(os.path.basename(pdf_path))[0]
+        
+        # 创建目录: output/PDF文件名_时间戳/
+        task_output_dir = os.path.join(app.config['UPLOAD_FOLDER'], f"{pdf_basename}_{timestamp}")
+        os.makedirs(task_output_dir, exist_ok=True)
+        
+        task['output_dir'] = task_output_dir
         
         # 步骤1: 处理PDF
         task['progress'].append("步骤1/4: 正在处理PDF并转换为图片...")
         task['current_step'] = 1
         
         pdf_processor = PDFProcessor(pdf_path)
-        image_paths = pdf_processor.convert_to_images_with_notes(output_dir)
+        image_paths = pdf_processor.convert_to_images_with_notes(task_output_dir)
         
         task['image_paths'] = image_paths
         task['progress'].append(f"✓ PDF处理完成，已生成 {len(image_paths)} 页图片")
@@ -162,7 +170,7 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
         task['current_step'] = 2
         
         text = pdf_processor.extract_text(extract_method)
-        text_path = os.path.join(output_dir, f'{task_id}_extracted_text.txt')
+        text_path = os.path.join(task_output_dir, f'{pdf_basename}.txt')
         
         with open(text_path, 'w', encoding='utf-8') as f:
             f.write(text)
@@ -179,7 +187,7 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
             translator = TranslatorFactory.create_translator(translator_type)
             translation = translator.translate(text)
             
-            translation_path = os.path.join(output_dir, f'{task_id}_translation.txt')
+            translation_path = os.path.join(task_output_dir, f'{pdf_basename}_translation.txt')
             with open(translation_path, 'w', encoding='utf-8') as f:
                 f.write(translation)
             
@@ -208,7 +216,7 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
                 vocabulary_extractor = VocabularyExtractor()
                 vocabulary = vocabulary_extractor.extract(text)
             
-            vocabulary_path = os.path.join(output_dir, f'{task_id}_vocabulary.txt')
+            vocabulary_path = os.path.join(task_output_dir, f'{pdf_basename}_vocabulary.txt')
             with open(vocabulary_path, 'w', encoding='utf-8') as f:
                 f.write(vocabulary)
             
@@ -316,25 +324,30 @@ def api_export_pdf(task_id):
         if not selected_images:
             return jsonify({'error': '选择的页面无效'}), 400
         
-        # 设置PDF保存路径，使用原始文件名作为基础
-        original_filename = os.path.splitext(task['filename'])[0]
-        pdf_filename = f"{original_filename}_translated.pdf"
-        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], pdf_filename)
+        # 使用PDF文件名和时间戳作为导出文件名
+        if 'output_dir' in task:
+            output_dir = task['output_dir']
+        else:
+            output_dir = app.config['UPLOAD_FOLDER']
+            
+        # 提取原始PDF文件名
+        pdf_path = task.get('pdf_path', '')
+        pdf_basename = os.path.splitext(os.path.basename(pdf_path))[0] if pdf_path else 'output'
         
-        # 创建PDF处理器
-        pdf_processor = PDFProcessor(task['file'])
+        output_path = os.path.join(output_dir, f'{pdf_basename}_export.pdf')
         
-        # 转换图片为PDF
-        result_path = pdf_processor.images_to_pdf(selected_images, pdf_path)
+        # 使用PDFProcessor将图像导出为PDF
+        pdf_processor = PDFProcessor('')  # 空路径，因为不需要加载PDF
+        pdf_processor.images_to_pdf(selected_images, output_path)
         
         # 更新任务信息
-        task['export_pdf'] = result_path
+        task['export_pdf'] = output_path
         
         return jsonify({
             'success': True,
             'message': 'PDF导出成功',
-            'pdf_path': os.path.basename(result_path),
-            'download_url': url_for('download_file', filename=os.path.basename(result_path))
+            'pdf_path': os.path.basename(output_path),
+            'download_url': url_for('download_file', filename=os.path.basename(output_path))
         })
     
     except Exception as e:

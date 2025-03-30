@@ -4,6 +4,7 @@
 import os
 import json
 import tempfile
+import time
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -82,11 +83,19 @@ def process_pdf():
         return jsonify({"error": "File not found"}), 404
     
     try:
+        # 创建以时间戳命名的子目录
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        pdf_basename = os.path.splitext(os.path.basename(file_path))[0]
+        
+        # 创建目录: output/PDF文件名_时间戳/
+        task_output_dir = os.path.join(OUTPUT_FOLDER, f"{pdf_basename}_{timestamp}")
+        os.makedirs(task_output_dir, exist_ok=True)
+        
         # Process the PDF file
         pdf_processor = PDFProcessor(file_path, margin)
         
         # Convert PDF to images with note space
-        image_paths = pdf_processor.convert_to_images_with_notes(OUTPUT_FOLDER)
+        image_paths = pdf_processor.convert_to_images_with_notes(task_output_dir)
         
         # Extract text content from PDF
         text_results = {}
@@ -99,7 +108,7 @@ def process_pdf():
             
             # Save all extraction results
             for method, text in text_results.items():
-                method_text_path = os.path.join(OUTPUT_FOLDER, f'extracted_text_{method}.txt')
+                method_text_path = os.path.join(task_output_dir, f'{pdf_basename}_{method}.txt')
                 with open(method_text_path, 'w', encoding='utf-8') as f:
                     f.write(text)
         else:
@@ -108,17 +117,40 @@ def process_pdf():
             text_results[extract_method] = text_content
         
         # Save extracted text
-        text_path = os.path.join(OUTPUT_FOLDER, 'extracted_text.txt')
+        text_path = os.path.join(task_output_dir, f'{pdf_basename}.txt')
         with open(text_path, 'w', encoding='utf-8') as f:
             f.write(text_content)
         
+        # Translate text
+        translator = DeepseekTranslator()
+        translation = translator.translate(text_content)
+        
+        # Save translated text
+        translation_path = os.path.join(task_output_dir, f'{pdf_basename}_translation.txt')
+        with open(translation_path, 'w', encoding='utf-8') as f:
+            f.write(translation)
+        
+        # Extract vocabulary
+        vocabulary_extractor = VocabularyExtractor()
+        vocabulary = vocabulary_extractor.extract_vocabulary(text_content)
+        
+        # Save vocabulary
+        vocabulary_path = os.path.join(task_output_dir, f'{pdf_basename}_vocabulary.txt')
+        with open(vocabulary_path, 'w', encoding='utf-8') as f:
+            f.write(vocabulary)
+        
+        # Return success response
         return jsonify({
-            "message": "PDF processed successfully",
-            "images": image_paths,
+            "success": True,
+            "image_paths": image_paths,
             "text_path": text_path,
-            "extraction_methods": list(text_results.keys())
+            "translation_path": translation_path,
+            "vocabulary_path": vocabulary_path,
+            "output_dir": task_output_dir
         })
+    
     except Exception as e:
+        print(f"Error processing PDF: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/extraction-methods', methods=['GET'])
