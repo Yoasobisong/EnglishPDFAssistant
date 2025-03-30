@@ -57,27 +57,36 @@
                                 <!-- 图片预览选项卡 -->
                                 <div class="tab-pane fade show active" id="images" role="tabpanel"
                                     aria-labelledby="images-tab">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <h4 class="mb-0">图片预览</h4>
-                                        <div class="btn-group">
-                                            <button id="prevImageBtn" class="btn btn-outline-primary" disabled>
-                                                <i class="bi bi-arrow-left"></i> 上一页
-                                            </button>
-                                            <span id="pageIndicator"
-                                                class="btn btn-outline-secondary disabled">0/0</span>
-                                            <button id="nextImageBtn" class="btn btn-outline-primary" disabled>
-                                                下一页 <i class="bi bi-arrow-right"></i>
-                                            </button>
+                                    <div class="my-4">
+                                        <div class="d-flex justify-content-between mb-3">
+                                            <div>
+                                                <button class="btn btn-primary" id="prevBtn" disabled><i
+                                                        class="bi bi-arrow-left"></i> 上一页</button>
+                                                <button class="btn btn-primary" id="nextBtn"><i
+                                                        class="bi bi-arrow-right"></i> 下一页</button>
+                                                <span class="mx-2">页面: <span id="pageIndicator">1</span> / <span
+                                                        id="totalPages">{{ task.image_paths|length }}</span></span>
+                                            </div>
+                                            <div>
+                                                <button id="exportBtn" class="btn btn-success">
+                                                    <i class="bi bi-file-earmark-pdf"></i> 导出PDF
+                                                </button>
+                                                <a href="/download/{{ task.task_id }}/translation_pdf"
+                                                    class="btn btn-danger" target="_blank">
+                                                    <i class="bi bi-file-pdf"></i> 下载翻译PDF
+                                                </a>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div class="text-center">
-                                        <div id="imageContainer" class="mb-4 border rounded p-2 bg-light">
-                                            <img id="currentImage" class="img-fluid" alt="PDF页面预览"
-                                                style="max-height: 80vh;">
+                                        <div class="text-center">
+                                            <div id="imageContainer" class="mb-4 border rounded p-2 bg-light">
+                                                <img id="currentImage" class="img-fluid" alt="PDF页面预览"
+                                                    style="max-height: 80vh;">
+                                            </div>
+
+                                            <div id="imageThumbnails" class="d-flex flex-wrap justify-content-center">
+                                            </div>
                                         </div>
-
-                                        <div id="imageThumbnails" class="d-flex flex-wrap justify-content-center"></div>
                                     </div>
                                 </div>
 
@@ -235,8 +244,8 @@
 
             // 初始化图片预览
             function initImagePreview() {
-                const prevBtn = document.getElementById('prevImageBtn');
-                const nextBtn = document.getElementById('nextImageBtn');
+                const prevBtn = document.getElementById('prevBtn');
+                const nextBtn = document.getElementById('nextBtn');
                 const pageIndicator = document.getElementById('pageIndicator');
                 const thumbnailsContainer = document.getElementById('imageThumbnails');
 
@@ -296,8 +305,8 @@
                 currentImageIndex = index;
                 const imageElement = document.getElementById('currentImage');
                 const pageIndicator = document.getElementById('pageIndicator');
-                const prevBtn = document.getElementById('prevImageBtn');
-                const nextBtn = document.getElementById('nextImageBtn');
+                const prevBtn = document.getElementById('prevBtn');
+                const nextBtn = document.getElementById('nextBtn');
 
                 // 更新图片
                 imageElement.src = `/api/image/${taskId}/${index}`;

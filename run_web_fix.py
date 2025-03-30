@@ -10,7 +10,7 @@ import sys
 import time
 import json
 import threading
-from flask import Flask, render_template, request, jsonify, send_from_directory, url_for, redirect, Blueprint
+from flask import Flask, render_template, request, jsonify, send_from_directory, url_for, redirect, Blueprint, send_file
 from werkzeug.utils import secure_filename
 
 # 确保当前目录在sys.path中
@@ -143,7 +143,7 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
         task['status'] = 'processing'
         task['progress'] = []
         task['current_step'] = 0
-        task['total_steps'] = 4  # PDF处理、文本提取、翻译、词汇
+        task['total_steps'] = 5  # PDF处理、文本提取、翻译、词汇、生成翻译PDF
         
         # 创建以时间戳命名的子目录
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -156,7 +156,7 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
         task['output_dir'] = task_output_dir
         
         # 步骤1: 处理PDF
-        task['progress'].append("步骤1/4: 正在处理PDF并转换为图片...")
+        task['progress'].append("步骤1/5: 正在处理PDF并转换为图片...")
         task['current_step'] = 1
         
         pdf_processor = PDFProcessor(pdf_path)
@@ -166,7 +166,7 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
         task['progress'].append(f"✓ PDF处理完成，已生成 {len(image_paths)} 页图片")
         
         # 步骤2: 提取文本
-        task['progress'].append(f"步骤2/4: 正在使用 {extract_method} 方法提取文本...")
+        task['progress'].append(f"步骤2/5: 正在使用 {extract_method} 方法提取文本...")
         task['current_step'] = 2
         
         text = pdf_processor.extract_text(extract_method)
@@ -180,7 +180,7 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
         task['progress'].append(f"✓ 文本提取完成，已保存到 {os.path.basename(text_path)}")
         
         # 步骤3: 翻译文本
-        task['progress'].append("步骤3/4: 正在翻译文本...")
+        task['progress'].append("步骤3/5: 正在翻译文本...")
         task['current_step'] = 3
         
         try:
@@ -194,6 +194,33 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
             task['translation'] = translation
             task['translation_path'] = translation_path
             task['progress'].append(f"✓ 翻译完成，已保存到 {os.path.basename(translation_path)}")
+            
+            # 步骤5: 生成翻译图片和PDF
+            task['progress'].append("步骤5/5: 正在生成翻译PDF...")
+            task['current_step'] = 5
+            
+            # 将翻译保存为图片
+            translation_img_path = os.path.join(task_output_dir, f'{pdf_basename}_translation.png')
+            pdf_processor.text_to_image(
+                translation, 
+                translation_img_path, 
+                title=f"《{pdf_basename}》翻译",
+                font_size=16
+            )
+            task['translation_img_path'] = translation_img_path
+            
+            # 将原文和翻译生成对照PDF
+            translation_pdf_path = os.path.join(task_output_dir, f'{pdf_basename}_translation.pdf')
+            pdf_processor.translation_to_pdf(
+                text, 
+                translation, 
+                translation_pdf_path, 
+                title=f"《{pdf_basename}》翻译"
+            )
+            task['translation_pdf_path'] = translation_pdf_path
+            
+            task['progress'].append(f"✓ 翻译PDF生成完成，已保存到 {os.path.basename(translation_pdf_path)}")
+            
         except Exception as e:
             error_msg = str(e)
             task['progress'].append(f"❌ 翻译失败: {error_msg}")
@@ -202,7 +229,7 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
             task['progress'].append("继续执行下一步...")
         
         # 步骤4: 提取词汇
-        task['progress'].append("步骤4/4: 正在提取词汇...")
+        task['progress'].append("步骤4/5: 正在提取词汇...")
         task['current_step'] = 4
         
         try:
@@ -406,7 +433,7 @@ def api_export_pdf(task_id):
             'success': True,
             'message': 'PDF导出成功',
             'pdf_path': os.path.basename(result_path),
-            'download_url': url_for('download_file', filename=os.path.basename(result_path))
+            'download_url': url_for('download_file', task_id=task_id, file_type='pdf')
         })
     
     except Exception as e:
@@ -415,18 +442,50 @@ def api_export_pdf(task_id):
         print(traceback.format_exc())
         return jsonify({'error': f'PDF导出失败: {str(e)}'}), 500
 
-@app.route('/download/<filename>')
-def download_file(filename):
-    """下载文件"""
-    # 首先尝试在用户指定的输出目录中查找
-    for task_info in tasks.values():
-        if 'output_dir' in task_info and os.path.exists(task_info['output_dir']):
-            file_path = os.path.join(task_info['output_dir'], filename)
-            if os.path.exists(file_path):
-                return send_from_directory(task_info['output_dir'], filename, as_attachment=True)
+@app.route('/download/<task_id>/<file_type>', methods=['GET'])
+def download_file(task_id, file_type):
+    """下载任务生成的文件"""
+    if task_id not in tasks:
+        return jsonify({'error': '任务不存在'}), 404
     
-    # 如果没找到，尝试在默认的上传目录中查找
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+    task = tasks[task_id]
+    if task['status'] != 'completed':
+        return jsonify({'error': '任务尚未完成'}), 400
+    
+    file_path = None
+    filename = None
+    
+    if file_type == 'text':
+        # 下载提取的文本
+        file_path = task.get('text_path')
+        filename = os.path.basename(file_path) if file_path else 'extracted_text.txt'
+    elif file_type == 'translation':
+        # 下载翻译文本
+        file_path = task.get('translation_path')
+        filename = os.path.basename(file_path) if file_path else 'translation.txt'
+    elif file_type == 'translation_img':
+        # 下载翻译图片
+        file_path = task.get('translation_img_path')
+        filename = os.path.basename(file_path) if file_path else 'translation.png'
+    elif file_type == 'translation_pdf':
+        # 下载翻译PDF
+        file_path = task.get('translation_pdf_path')
+        filename = os.path.basename(file_path) if file_path else 'translation.pdf'
+    elif file_type == 'vocabulary':
+        # 下载词汇表
+        file_path = task.get('vocabulary_path')
+        filename = os.path.basename(file_path) if file_path else 'vocabulary.txt'
+    elif file_type == 'pdf':
+        # 下载导出的PDF
+        file_path = task.get('export_pdf')
+        filename = os.path.basename(file_path) if file_path else 'exported.pdf'
+    else:
+        return jsonify({'error': '不支持的文件类型'}), 400
+    
+    if not file_path or not os.path.exists(file_path):
+        return jsonify({'error': '文件不存在'}), 404
+    
+    return send_file(file_path, as_attachment=True, download_name=filename)
 
 @app.route('/about')
 def about():

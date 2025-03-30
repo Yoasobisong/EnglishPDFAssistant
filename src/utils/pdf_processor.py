@@ -543,4 +543,177 @@ class PDFProcessor:
             except:
                 pass
             # 重新抛出异常，附带更多上下文
-            raise Exception(f"创建PDF时出错: {str(e)}") 
+            raise Exception(f"创建PDF时出错: {str(e)}")
+            
+    def text_to_image(self, text, output_path, font_size=12, line_spacing=1.5, 
+                      margin=50, max_width=1600, bg_color=(255, 255, 255),
+                      text_color=(0, 0, 0), title=None, title_size=24):
+        """
+        将文本渲染为图片并保存
+        
+        Args:
+            text (str): 需要渲染的文本
+            output_path (str): 输出图片路径
+            font_size (int): 字体大小
+            line_spacing (float): 行间距
+            margin (int): 页面边距
+            max_width (int): 最大图片宽度
+            bg_color (tuple): 背景颜色 (R,G,B)
+            text_color (tuple): 文本颜色 (R,G,B)
+            title (str): 标题文本
+            title_size (int): 标题字体大小
+            
+        Returns:
+            str: 输出图片路径
+        """
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+            import textwrap
+            
+            # 创建输出目录
+            output_dir = os.path.dirname(output_path)
+            if output_dir and not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+                
+            # 尝试加载字体，如果失败则使用默认字体
+            try:
+                # 尝试使用常见的中文字体
+                font_paths = [
+                    "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",  # Linux
+                    "C:\\Windows\\Fonts\\simhei.ttf",  # Windows
+                    "/System/Library/Fonts/PingFang.ttc",  # macOS
+                    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",  # Linux
+                ]
+                
+                font = None
+                for path in font_paths:
+                    if os.path.exists(path):
+                        font = ImageFont.truetype(path, font_size)
+                        title_font = ImageFont.truetype(path, title_size)
+                        break
+                        
+                if font is None:
+                    font = ImageFont.load_default()
+                    title_font = ImageFont.load_default()
+                    
+            except Exception as e:
+                print(f"加载字体失败: {e}")
+                font = ImageFont.load_default()
+                title_font = ImageFont.load_default()
+            
+            # 计算每行最大字符数
+            # 这里使用估算，实际上应该根据字体测量
+            chars_per_line = max_width // (font_size // 2) - 10
+            
+            # 包装文本以适应宽度
+            lines = []
+            
+            # 添加标题
+            title_height = 0
+            if title:
+                wrapped_title = textwrap.fill(title, width=chars_per_line)
+                title_lines = wrapped_title.split('\n')
+                title_height = len(title_lines) * (title_size + 10) + 30  # 标题额外间距
+            
+            # 处理主文本
+            if text:
+                paragraphs = text.split('\n')
+                for para in paragraphs:
+                    if para.strip():
+                        wrapped = textwrap.fill(para, width=chars_per_line)
+                        lines.extend(wrapped.split('\n'))
+                        lines.append('')  # 段落间空行
+            
+            # 计算图片高度
+            line_height = font_size * line_spacing
+            text_height = len(lines) * line_height
+            img_height = int(margin * 2 + text_height + title_height)
+            img_width = max_width
+            
+            # 创建图片
+            img = Image.new('RGB', (img_width, img_height), bg_color)
+            draw = ImageDraw.Draw(img)
+            
+            # 绘制标题
+            y_offset = margin
+            if title:
+                title_wrapped = textwrap.fill(title, width=chars_per_line)
+                for line in title_wrapped.split('\n'):
+                    draw.text((margin, y_offset), line, font=title_font, fill=text_color)
+                    y_offset += title_size + 10
+                y_offset += 20  # 标题与正文间的额外间距
+            
+            # 绘制文本
+            for line in lines:
+                draw.text((margin, y_offset), line, font=font, fill=text_color)
+                y_offset += line_height
+            
+            # 保存图片
+            img.save(output_path)
+            return output_path
+            
+        except Exception as e:
+            print(f"文本转图片失败: {e}")
+            raise Exception(f"将文本转换为图片时出错: {str(e)}")
+    
+    def translation_to_pdf(self, original_text, translation_text, output_path, title=None):
+        """
+        将原文和翻译渲染为图片并保存为PDF
+        
+        Args:
+            original_text (str): 原文文本
+            translation_text (str): 翻译文本
+            output_path (str): 输出PDF路径
+            title (str): PDF标题
+            
+        Returns:
+            str: 输出PDF路径
+        """
+        try:
+            # 创建临时目录存放图片
+            temp_dir = tempfile.mkdtemp()
+            
+            # 获取文件名（不含扩展名）
+            base_name = os.path.splitext(os.path.basename(output_path))[0]
+            
+            # 生成标题
+            pdf_title = title if title else f"翻译: {base_name}"
+            
+            # 将原文转为图片
+            original_img_path = os.path.join(temp_dir, "original.png")
+            self.text_to_image(
+                original_text, 
+                original_img_path, 
+                title="原文",
+                bg_color=(245, 245, 245)  # 浅灰色背景
+            )
+            
+            # 将翻译转为图片
+            translation_img_path = os.path.join(temp_dir, "translation.png")
+            self.text_to_image(
+                translation_text, 
+                translation_img_path, 
+                title="翻译",
+                bg_color=(240, 248, 255)  # 浅蓝色背景
+            )
+            
+            # 创建PDF
+            image_paths = [original_img_path, translation_img_path]
+            pdf_path = self.images_to_pdf(image_paths, output_path)
+            
+            # 清理临时文件
+            for img in image_paths:
+                try:
+                    os.remove(img)
+                except:
+                    pass
+            try:
+                os.rmdir(temp_dir)
+            except:
+                pass
+                
+            return pdf_path
+            
+        except Exception as e:
+            print(f"翻译转PDF失败: {e}")
+            raise Exception(f"创建翻译PDF时出错: {str(e)}") 
