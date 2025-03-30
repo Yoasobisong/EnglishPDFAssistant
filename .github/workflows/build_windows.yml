@@ -1,0 +1,83 @@
+name: Build Windows Executable
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+env:
+  LANG: zh_CN.UTF-8
+  LC_ALL: zh_CN.UTF-8
+  PYTHONUTF8: 1
+
+permissions:
+  contents: write  # 必须的仓库权限
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set Release Tag
+      shell: powershell
+      run: |
+        $DATE = (Get-Date).ToString("yyyy-MM-dd")
+        $VERSION = "v1"  # 版本号，每次发布时递增
+        $RELEASE_TAG = "$DATE-$VERSION"
+        "RELEASE_TAG=$RELEASE_TAG" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Setup environment
+      shell: cmd
+      run: |
+        IF NOT EXIST .env (
+          copy .env.example .env
+        )
+
+    - name: Build executable
+      shell: cmd
+      run: |
+        python -m PyInstaller pdf_assistant.spec
+        
+        cd dist
+        powershell "Compress-Archive -Path 'PDF阅读助手' -DestinationPath EnglishPDFAssistant_Windows.zip"
+
+    - name: Upload Release
+      shell: powershell
+      run: |
+        gh release create "$env:RELEASE_TAG" `
+          dist/EnglishPDFAssistant_Windows.zip `
+          --title "PDF阅读助手 $env:RELEASE_TAG" `
+          --notes "Windows版本PDF阅读助手 $($env:RELEASE_TAG)
+
+          ## 此版本包含:
+          
+          - GUI版应用程序: PDF阅读助手(GUI).exe
+          - Web版应用程序: PDF阅读助手(Web).exe
+          
+          ## 使用方法
+          
+          1. 解压缩后运行 PDF阅读助手(GUI).exe 或 PDF阅读助手(Web).exe
+          2. 上传PDF文件并选择处理选项
+          3. 等待处理完成后查看结果
+          
+          ## 注意事项
+          
+          - 首次运行时需要配置API密钥
+          - 详细使用说明请参考README.md
+          "
+          
+      env:
+        GH_TOKEN: ${{ github.token }}  # 使用GitHub自动生成的token 
