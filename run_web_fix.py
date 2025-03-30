@@ -331,31 +331,50 @@ def api_export_pdf(task_id):
             output_dir = app.config['UPLOAD_FOLDER']
             
         # 提取原始PDF文件名
-        pdf_path = task.get('pdf_path', '')
+        pdf_path = task.get('file', '')  # 使用'file'字段获取原始文件路径
         pdf_basename = os.path.splitext(os.path.basename(pdf_path))[0] if pdf_path else 'output'
         
         output_path = os.path.join(output_dir, f'{pdf_basename}_export.pdf')
         
         # 使用PDFProcessor将图像导出为PDF
         pdf_processor = PDFProcessor('')  # 空路径，因为不需要加载PDF
-        pdf_processor.images_to_pdf(selected_images, output_path)
+        result_path = pdf_processor.images_to_pdf(selected_images, output_path)
+        
+        # 确保文件存在
+        if not os.path.exists(result_path):
+            return jsonify({'error': f'PDF文件未找到: {result_path}'}), 500
         
         # 更新任务信息
-        task['export_pdf'] = output_path
+        task['export_pdf'] = result_path
+        
+        # 调试信息
+        print(f"PDF导出成功: {result_path}")
+        print(f"文件存在: {os.path.exists(result_path)}")
         
         return jsonify({
             'success': True,
             'message': 'PDF导出成功',
-            'pdf_path': os.path.basename(output_path),
-            'download_url': url_for('download_file', filename=os.path.basename(output_path))
+            'pdf_path': os.path.basename(result_path),
+            'download_url': url_for('download_file', filename=os.path.basename(result_path))
         })
     
     except Exception as e:
+        import traceback
+        print(f"PDF导出错误: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({'error': f'PDF导出失败: {str(e)}'}), 500
 
 @app.route('/download/<filename>')
 def download_file(filename):
     """下载文件"""
+    # 首先尝试在用户指定的输出目录中查找
+    for task_info in tasks.values():
+        if 'output_dir' in task_info and os.path.exists(task_info['output_dir']):
+            file_path = os.path.join(task_info['output_dir'], filename)
+            if os.path.exists(file_path):
+                return send_from_directory(task_info['output_dir'], filename, as_attachment=True)
+    
+    # 如果没找到，尝试在默认的上传目录中查找
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
 @app.route('/about')
