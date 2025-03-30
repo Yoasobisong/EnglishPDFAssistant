@@ -1,28 +1,234 @@
 /* PDF阅读助手CSS样式 */
 
-/* 通用样式 */
-body {
-    background-color: #f5f5f5;
-    color: #333;
+/* 全局样式 */
+:root {
+    --primary-color: #4a90e2;
+    --secondary-color: #2ecc71;
+    --accent-color: #e74c3c;
+    --text-color: #2c3e50;
+    --light-gray: #f8f9fa;
+    --border-radius: 12px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.container {
-    max-width: 1200px;
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--text-color);
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+}
+
+/* 头部样式 */
+header {
+    margin-bottom: 2rem;
+}
+
+header h1 {
+    color: var(--primary-color);
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+header .lead {
+    color: #666;
+    font-size: 1.2rem;
+}
+
+/* 卡片样式 */
+.card {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-title {
+    color: var(--primary-color);
+    font-weight: 600;
 }
 
 /* 上传区域样式 */
 .upload-area {
-    background-color: #f8f9fa;
-    border: 2px dashed #dee2e6;
-    border-radius: 5px;
+    background: white;
+    border-radius: var(--border-radius);
+    border: 2px dashed #ddd;
     transition: all 0.3s ease;
     cursor: pointer;
 }
 
-.upload-area:hover,
-.upload-area.border-primary {
-    background-color: #e9f2ff;
-    border-color: #0d6efd;
+.upload-area:hover {
+    border-color: var(--primary-color);
+    background: #f8f9fa;
+}
+
+.upload-area i {
+    color: var(--primary-color);
+}
+
+/* 按钮样式 */
+.btn {
+    border-radius: 25px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #357abd;
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: var(--secondary-color);
+    border: none;
+}
+
+.btn-success:hover {
+    background: #27ae60;
+    transform: translateY(-2px);
+}
+
+/* 功能图标样式 */
+.feature-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    background: var(--light-gray);
+    transition: all 0.3s ease;
+}
+
+.feature-icon:hover {
+    transform: scale(1.1);
+}
+
+/* 进度条样式 */
+.progress {
+    height: 8px;
+    border-radius: 4px;
+    background: #e9ecef;
+}
+
+.progress-bar {
+    background: var(--primary-color);
+    transition: width 0.3s ease;
+}
+
+/* 模态框样式 */
+.modal-content {
+    border-radius: var(--border-radius);
+    border: none;
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+/* 文件信息样式 */
+.alert {
+    border-radius: var(--border-radius);
+    border: none;
+}
+
+.alert-info {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+/* 页脚样式 */
+footer {
+    border-top: 1px solid #eee;
+    padding-top: 2rem;
+}
+
+footer a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+footer a:hover {
+    color: #357abd;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+
+    header {
+        margin-bottom: 1rem;
+    }
+
+    .card {
+        margin-bottom: 1rem;
+    }
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+/* 加载动画 */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.25rem;
+}
+
+/* 工具提示样式 */
+.tooltip {
+    font-size: 0.875rem;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #357abd;
+}
+
+/* 通用样式 */
+.container {
+    max-width: 1200px;
 }
 
 /* 文件信息区域 */
@@ -106,27 +312,6 @@ body {
     justify-content: center;
 }
 
-/* 加载动画 */
-.spinner-border {
-    width: 3rem;
-    height: 3rem;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-    .log-area {
-        height: 200px;
-    }
-
-    #imageContainer {
-        min-height: 300px;
-    }
-
-    .page-select-item {
-        margin: 5px;
-    }
-}
-
 /* 高亮特定词汇 */
 .highlight-word {
     background-color: #ffdd57;
@@ -142,22 +327,6 @@ body {
 .card:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-/* 进度条样式 */
-.progress-bar {
-    transition: width 0.6s ease;
-}
-
-/* 自定义按钮悬停效果 */
-.btn-primary:hover {
-    background-color: #0a58ca;
-    border-color: #0a53be;
-}
-
-.btn-success:hover {
-    background-color: #157347;
-    border-color: #146c43;
 }
 
 /* 特殊文本格式 */
