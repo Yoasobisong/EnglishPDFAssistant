@@ -7,12 +7,19 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 block_cipher = None
 
 # 添加静态文件和模板
-added_files = [
-    ('static', 'static'),
-    ('src/web/static', 'src/web/static'),
-    ('src/web/templates', 'src/web/templates'),
-    ('.env.example', '.'),
-]
+added_files = []
+
+# 检查目录是否存在并添加
+if os.path.exists('static'):
+    added_files.append(('static', 'static'))
+if os.path.exists('src/web/static'):
+    added_files.append(('src/web/static', 'src/web/static'))
+if os.path.exists('src/web/templates'):
+    added_files.append(('src/web/templates', 'src/web/templates'))
+if os.path.exists('.env.example'):
+    added_files.append(('.env.example', '.'))
+
+print(f"Added files: {added_files}")
 
 # 添加隐藏导入
 hidden_imports = collect_submodules('tkinter') + [
@@ -84,7 +91,7 @@ exe_a = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='src/web/static/favicon.ico' if os.path.exists('src/web/static/favicon.ico') else None,
+    icon=None,
 )
 
 # Web应用可执行文件
@@ -104,7 +111,7 @@ exe_b = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='src/web/static/favicon.ico' if os.path.exists('src/web/static/favicon.ico') else None,
+    icon=None,
 )
 
 # 收集所有文件到一个目录
