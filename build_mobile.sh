@@ -3,6 +3,11 @@
 echo "=== PDF阅读助手移动应用打包工具 ==="
 echo "此脚本将帮助您打包Android版本的PDF阅读助手"
 
+# 设置HTTP代理
+export HTTP_PROXY="http://127.0.0.1:7890"
+export HTTPS_PROXY="http://127.0.0.1:7890"
+echo "已设置代理: $HTTP_PROXY"
+
 # 确保有正确的Python环境
 if ! command -v python3 &> /dev/null; then
     echo "错误: 未找到python3"
@@ -46,6 +51,20 @@ fi
 # 拷贝图标文件(如果有)
 if [ -f "static/icon.png" ]; then
     cp static/icon.png assets/
+fi
+
+# 主入口文件设置
+echo "设置移动应用入口..."
+if [ ! -f "main.py" ]; then
+    echo "创建main.py入口文件，指向mobile_app.py..."
+    echo '#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+from mobile_app import PDFAssistantApp
+
+if __name__ == "__main__":
+    PDFAssistantApp().run()
+' > main.py
+    chmod +x main.py
 fi
 
 # 运行Buildozer

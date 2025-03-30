@@ -12,17 +12,20 @@ package.domain = org.pdfassistant
 # 源码所在文件夹
 source.dir = .
 
+# 应用主入口文件
+source.main_file = main.py
+
 # 应用入口文件
 source.include_exts = py,png,jpg,kv,atlas
 
 # 忽略的文件模式
-source.exclude_dirs = tests, bin, .git, __pycache__, venv
+source.exclude_dirs = tests, bin, .git, __pycache__, venv, .buildozer
 
 # 忽略的文件扩展名
-source.exclude_patterns = license,README.md,*.spec,*.bat,*.sh,*.txt
+source.exclude_patterns = license,README.md,pdf_assistant.spec,*.bat
 
 # 需要包含的文件/文件夹
-source.include_patterns = assets/*,src/*,*.kv
+source.include_patterns = assets/*,src/*,*.kv,mobile_app.py,main.py
 
 # 程序版本
 version = 0.1
@@ -54,6 +57,9 @@ android.ndk = 25b
 # SDK
 android.sdk = 33
 
+# 代理设置
+android.http_proxy = http://127.0.0.1:7890
+
 # 签署应用程序
 android.keystore = pdf_assistant.keystore
 android.keyalias = pdfassistant
@@ -61,14 +67,14 @@ android.keyalias = pdfassistant
 # 自动生成keystore
 android.accept_sdk_license = True
 
+# 自动接受安装SDK组件
+android.accept_sdk_license = True
+
+# 安装器
+android.installer_type = sdkmanager
+
 # 预编译的依赖项
-#p4a.local_recipes = 
-
-# 额外的构建配置
-#p4a.hook =
-
-# 部署目标
-#p4a.bootstrap = sdl2
+p4a.bootstrap = sdl2
 
 [buildozer]
 # 构建输出目录
