@@ -1,6 +1,11 @@
 @echo off
 echo === 开始打包PDF阅读助手为Windows可执行文件 ===
 
+REM 设置代理（如果需要）
+set HTTP_PROXY=http://127.0.0.1:7890
+set HTTPS_PROXY=http://127.0.0.1:7890
+echo 已设置代理: %HTTP_PROXY%
+
 REM 确保安装了必要的依赖
 echo 正在检查并安装依赖...
 pip install -r requirements.txt
@@ -28,5 +33,13 @@ echo - PDF阅读助手(Web).exe: 网页应用
 
 REM 打开输出目录
 explorer dist\PDF阅读助手
+
+REM 创建ZIP压缩包
+echo 创建ZIP压缩包...
+cd dist
+powershell -Command "Compress-Archive -Path 'PDF阅读助手' -DestinationPath 'EnglishPDFAssistant_Windows.zip' -Force"
+cd ..
+
+echo ZIP压缩包已创建: dist\EnglishPDFAssistant_Windows.zip
 
 pause 

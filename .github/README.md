@@ -1,30 +1,18 @@
 # PDF阅读助手 GitHub Actions
 
-此目录包含自动构建脚本，用于生成可执行程序。
+此目录包含Windows可执行文件的构建配置，但我们不使用GitHub Actions进行自动构建。
 
-## 工作流说明
+## Windows可执行文件构建
 
-1. **Windows可执行文件构建** (build_windows.yml)
-   - 构建Windows版可执行文件
-   - 打包为ZIP文件
-   - 上传到GitHub Releases
+您可以在本地运行`build_windows.bat`脚本来构建Windows可执行文件：
 
-2. **Android APK构建** (build_android.yml)
-   - 构建Android版APK
-   - 上传到GitHub Releases
+```bat
+.\build_windows.bat
+```
 
-## 如何使用
+### 构建结果
 
-1. 手动触发构建：
-   - 访问项目的Actions标签页
-   - 选择相应的工作流
-   - 点击"Run workflow"
-
-2. 发布新版本时自动构建：
-   - 创建新的GitHub Release
-   - 工作流会自动运行，并将构建结果上传到该Release
-
-## 构建结果
-
-- Windows: `EnglishPDFAssistant_Windows.zip`
-- Android: `PDFAssistant-[日期]-[版本].apk` 
+- Windows可执行文件位于`dist\PDF阅读助手`目录
+- 包含两个可执行文件：
+  - `PDF阅读助手(GUI).exe` - 图形界面版本
+  - `PDF阅读助手(Web).exe` - Web服务器版本 

@@ -6,24 +6,32 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
-# Add additional data files
+# 添加静态文件和模板
 added_files = [
     ('static', 'static'),
-    ('.env', '.'),
+    ('src/web/static', 'src/web/static'),
+    ('src/web/templates', 'src/web/templates'),
+    ('.env.example', '.'),
 ]
 
-# Add hidden imports
+# 添加隐藏导入
 hidden_imports = collect_submodules('tkinter') + [
     'PIL._tkinter_finder',
     'cv2',
     'numpy',
     'werkzeug.exceptions',
     'flask.cli',
-    'flask_cors'
+    'flask_cors',
+    'pdfplumber',
+    'pdfminer',
+    'pdfminer.high_level',
+    'pytesseract',
+    'pdf2image'
 ]
 
+# 分析应用程序
 a = Analysis(
-    ['app.py'],
+    ['app.py'],  # 主程序入口
     pathex=[],
     binaries=[],
     datas=added_files,
@@ -37,14 +45,35 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-exe = EXE(
-    pyz,
+# 额外创建一个Web应用入口
+b = Analysis(
+    ['run_web_fix.py'],  # Web应用入口
+    pathex=[],
+    binaries=[],
+    datas=added_files,
+    hiddenimports=hidden_imports,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+# 创建PYZ归档
+pyz_a = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz_b = PYZ(b.pure, b.zipped_data, cipher=block_cipher)
+
+# GUI应用可执行文件
+exe_a = EXE(
+    pyz_a,
     a.scripts,
     [],
     exclude_binaries=True,
-    name='PDF阅读助手',
+    name='PDF阅读助手(GUI)',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -55,12 +84,39 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='src/web/static/favicon.ico' if os.path.exists('src/web/static/favicon.ico') else None,
 )
+
+# Web应用可执行文件
+exe_b = EXE(
+    pyz_b,
+    b.scripts,
+    [],
+    exclude_binaries=True,
+    name='PDF阅读助手(Web)',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=True,  # Web应用保留控制台输出
+    disable_windowed_traceback=False,
+    argv_emulation=True,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon='src/web/static/favicon.ico' if os.path.exists('src/web/static/favicon.ico') else None,
+)
+
+# 收集所有文件到一个目录
 coll = COLLECT(
-    exe,
+    exe_a,
     a.binaries,
     a.zipfiles,
     a.datas,
+    exe_b,
+    b.binaries,
+    b.zipfiles,
+    b.datas,
     strip=False,
     upx=True,
     upx_exclude=[],
