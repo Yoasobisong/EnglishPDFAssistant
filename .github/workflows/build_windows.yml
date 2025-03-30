@@ -9,7 +9,6 @@ env:
   LANG: zh_CN.UTF-8
   LC_ALL: zh_CN.UTF-8
   PYTHONUTF8: 1
-  CI: true
 
 permissions:
   contents: write  # 必须的仓库权限
@@ -35,44 +34,37 @@ jobs:
         python-version: '3.10'
 
     - name: Create directories
+      shell: cmd
       run: |
-        mkdir -p static
-        mkdir -p src/web/static
-        mkdir -p src/web/templates
-        if (Test-Path .env.example) {
+        mkdir static
+        mkdir src\web\static
+        mkdir src\web\templates
+        if exist .env.example (
           copy .env.example .env
-        } else {
-          echo "" > .env.example
-        }
+        ) else (
+          echo. > .env.example
+        )
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
         pip install pyinstaller
 
     - name: Build executable
+      shell: cmd
       run: |
-        python -m PyInstaller pdf_assistant.spec
-        dir dist
-        
+        python -m PyInstaller --clean pdf_assistant.spec
+
         cd dist
-        if (Test-Path "PDF阅读助手") {
-          dir "PDF阅读助手"
-          Compress-Archive -Path "PDF阅读助手\*" -DestinationPath "EnglishPDFAssistant_Windows.zip" -Force
-        } else {
-          echo "警告: 构建目录不存在"
+        if exist "PDF阅读助手" (
+          powershell "Compress-Archive -Path 'PDF阅读助手\*' -DestinationPath 'EnglishPDFAssistant_Windows.zip' -Force"
+        ) else (
+          echo Warning: Build directory not found
           dir
-        }
-        
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: EnglishPDFAssistant
-        path: dist/EnglishPDFAssistant_Windows.zip
+        )
 
     - name: Upload Release
-      if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
       shell: powershell
       run: |
         if (Test-Path "dist/EnglishPDFAssistant_Windows.zip") {
@@ -95,10 +87,9 @@ jobs:
             ## 注意事项
             
             - 首次运行时需要配置API密钥
-            - 详细使用说明请参考README.md
-            "
+            - 详细使用说明请参考README.md"
         } else {
-          echo "警告: ZIP文件不存在，无法上传到Release"
+          echo "Warning: ZIP file not found"
           dir dist
         }
       env:
