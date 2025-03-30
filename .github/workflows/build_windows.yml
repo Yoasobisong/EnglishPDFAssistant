@@ -6,12 +6,12 @@ on:
   workflow_dispatch:
 
 env:
-  LANG: zh_CN.UTF-8
-  LC_ALL: zh_CN.UTF-8
+  LANG: en_US.UTF-8
+  LC_ALL: en_US.UTF-8
   PYTHONUTF8: 1
 
 permissions:
-  contents: write  # 必须的仓库权限
+  contents: write  # Repository permissions required
 
 jobs:
   build:
@@ -24,7 +24,7 @@ jobs:
       shell: powershell
       run: |
         $DATE = (Get-Date).ToString("yyyy-MM-dd")
-        $VERSION = "v1"  # 版本号，每次发布时递增
+        $VERSION = "v1"  # Version number, increment for each release
         $RELEASE_TAG = "$DATE-$VERSION"
         "RELEASE_TAG=$RELEASE_TAG" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
 
@@ -57,8 +57,8 @@ jobs:
         python -m PyInstaller --clean pdf_assistant.spec
 
         cd dist
-        if exist "PDF阅读助手" (
-          powershell "Compress-Archive -Path 'PDF阅读助手\*' -DestinationPath 'EnglishPDFAssistant_Windows.zip' -Force"
+        if exist "PDF Reading Assistant" (
+          powershell "Compress-Archive -Path 'PDF Reading Assistant\*' -DestinationPath 'EnglishPDFAssistant_Windows.zip' -Force"
         ) else (
           echo Warning: Build directory not found
           dir
@@ -70,27 +70,27 @@ jobs:
         if (Test-Path "dist/EnglishPDFAssistant_Windows.zip") {
           gh release create "$env:RELEASE_TAG" `
             dist/EnglishPDFAssistant_Windows.zip `
-            --title "PDF阅读助手 $env:RELEASE_TAG" `
-            --notes "Windows版本PDF阅读助手 $($env:RELEASE_TAG)
+            --title "PDF Reading Assistant $env:RELEASE_TAG" `
+            --notes "Windows Version PDF Reading Assistant $($env:RELEASE_TAG)
 
-            ## 此版本包含:
+            ## This release includes:
             
-            - GUI版应用程序: PDF阅读助手(GUI).exe
-            - Web版应用程序: PDF阅读助手(Web).exe
+            - GUI Application: PDF Reading Assistant (GUI).exe
+            - Web Application: PDF Reading Assistant (Web).exe
             
-            ## 使用方法
+            ## Usage Instructions
             
-            1. 解压缩后运行 PDF阅读助手(GUI).exe 或 PDF阅读助手(Web).exe
-            2. 上传PDF文件并选择处理选项
-            3. 等待处理完成后查看结果
+            1. Unzip and run PDF Reading Assistant (GUI).exe or PDF Reading Assistant (Web).exe
+            2. Upload PDF file and select processing options
+            3. Wait for processing to complete and view results
             
-            ## 注意事项
+            ## Notes
             
-            - 首次运行时需要配置API密钥
-            - 详细使用说明请参考README.md"
+            - First-time users need to configure API keys
+            - For detailed instructions, please refer to README.md"
         } else {
           echo "Warning: ZIP file not found"
           dir dist
         }
       env:
-        GH_TOKEN: ${{ github.token }}  # 使用GitHub自动生成的token 
+        GH_TOKEN: ${{ github.token }}  # Use auto-generated GitHub token 
