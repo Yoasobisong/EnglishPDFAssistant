@@ -11,7 +11,7 @@ env:
   PYTHONUTF8: 1
 
 permissions:
-  contents: write  # Repository permissions required
+  contents: write  # Required repository permissions
 
 jobs:
   build:
@@ -33,74 +33,41 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Create directories
-      shell: cmd
-      run: |
-        mkdir static
-        mkdir src\web\static
-        mkdir src\web\templates
-        if exist .env.example (
-          copy .env.example .env
-        ) else (
-          echo. > .env.example
-        )
-
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
         pip install pyinstaller
 
-    - name: Debug environment
-      shell: cmd
-      run: |
-        dir
-        echo "Current directory:"
-        cd
-        
     - name: Build executable
       shell: cmd
       run: |
-        echo "Starting build process..."
         python -m PyInstaller --clean pdf_assistant.spec
-        echo "Build completed, checking results..."
+
         dir dist
         if exist "dist\PDF Reading Assistant" (
           dir "dist\PDF Reading Assistant"
           
-          REM 单独复制可执行文件到dist根目录
+          REM Copy executable files to dist root directory
           copy "dist\PDF Reading Assistant\PDF Reading Assistant (GUI).exe" dist\
           copy "dist\PDF Reading Assistant\PDF Reading Assistant (Web).exe" dist\
           
-          REM 创建ZIP包
+          REM Create ZIP package
           powershell "Compress-Archive -Path 'dist\PDF Reading Assistant\*' -DestinationPath 'dist\EnglishPDFAssistant_Windows.zip' -Force"
         ) else (
           echo Warning: Build directory not found
           dir dist
         )
 
-    - name: List artifacts
+    - name: Upload Release
       shell: powershell
       run: |
-        Get-ChildItem -Path "dist" -Recurse | Select-Object FullName
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: EnglishPDFAssistant
-        path: |
-          dist/EnglishPDFAssistant_Windows.zip
-          dist/PDF Reading Assistant (GUI).exe
-          dist/PDF Reading Assistant (Web).exe
-        if-no-files-found: warn
-
-    - name: Upload to Release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        files: |
-          dist/EnglishPDFAssistant_Windows.zip
-          dist/PDF Reading Assistant (GUI).exe
-          dist/PDF Reading Assistant (Web).exe
+        gh release create "$env:RELEASE_TAG" `
+          dist/EnglishPDFAssistant_Windows.zip `
+          dist/"PDF Reading Assistant (GUI).exe" `
+          dist/"PDF Reading Assistant (Web).exe" `
+          --title "Release $env:RELEASE_TAG" `
+          --notes "Windows Build Version $($env:RELEASE_TAG)"
+          
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        GH_TOKEN: ${{ github.token }} 
