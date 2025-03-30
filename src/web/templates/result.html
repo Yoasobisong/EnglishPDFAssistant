@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>处理结果 - PDF阅读助手</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <div class="container">
+        <header class="py-4 text-center">
+            <h1><i class="bi bi-file-earmark-pdf"></i> PDF阅读助手</h1>
+            <p class="lead">处理结果: {{ task.filename }}</p>
+        </header>
+
+        <main>
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <ul class="nav nav-tabs" id="resultTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="images-tab" data-bs-toggle="tab"
+                                        data-bs-target="#images" type="button" role="tab" aria-controls="images"
+                                        aria-selected="true">
+                                        <i class="bi bi-images"></i> 图片
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="translation-tab" data-bs-toggle="tab"
+                                        data-bs-target="#translation" type="button" role="tab"
+                                        aria-controls="translation" aria-selected="false">
+                                        <i class="bi bi-translate"></i> 翻译
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="vocabulary-tab" data-bs-toggle="tab"
+                                        data-bs-target="#vocabulary" type="button" role="tab" aria-controls="vocabulary"
+                                        aria-selected="false">
+                                        <i class="bi bi-journal-text"></i> 词汇
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="export-tab" data-bs-toggle="tab"
+                                        data-bs-target="#export" type="button" role="tab" aria-controls="export"
+                                        aria-selected="false">
+                                        <i class="bi bi-file-earmark-arrow-down"></i> 导出
+                                    </button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content p-3" id="resultTabContent">
+                                <!-- 图片预览选项卡 -->
+                                <div class="tab-pane fade show active" id="images" role="tabpanel"
+                                    aria-labelledby="images-tab">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h4 class="mb-0">图片预览</h4>
+                                        <div class="btn-group">
+                                            <button id="prevImageBtn" class="btn btn-outline-primary" disabled>
+                                                <i class="bi bi-arrow-left"></i> 上一页
+                                            </button>
+                                            <span id="pageIndicator"
+                                                class="btn btn-outline-secondary disabled">0/0</span>
+                                            <button id="nextImageBtn" class="btn btn-outline-primary" disabled>
+                                                下一页 <i class="bi bi-arrow-right"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-center">
+                                        <div id="imageContainer" class="mb-4 border rounded p-2 bg-light">
+                                            <img id="currentImage" class="img-fluid" alt="PDF页面预览"
+                                                style="max-height: 80vh;">
+                                        </div>
+
+                                        <div id="imageThumbnails" class="d-flex flex-wrap justify-content-center"></div>
+                                    </div>
+                                </div>
+
+                                <!-- 翻译选项卡 -->
+                                <div class="tab-pane fade" id="translation" role="tabpanel"
+                                    aria-labelledby="translation-tab">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h4 class="mb-0">翻译结果</h4>
+                                        <div class="btn-group">
+                                            <a id="downloadTranslationBtn" href="#" class="btn btn-outline-success">
+                                                <i class="bi bi-download"></i> 下载翻译文本
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card h-100">
+                                                <div class="card-header">原文</div>
+                                                <div class="card-body overflow-auto" style="max-height: 60vh;">
+                                                    <pre id="extractedText" class="text-wrap mb-0"
+                                                        style="white-space: pre-wrap;"></pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card h-100">
+                                                <div class="card-header">翻译</div>
+                                                <div class="card-body overflow-auto" style="max-height: 60vh;">
+                                                    <div id="translationText" style="white-space: pre-wrap;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 词汇选项卡 -->
+                                <div class="tab-pane fade" id="vocabulary" role="tabpanel"
+                                    aria-labelledby="vocabulary-tab">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h4 class="mb-0">词汇解析</h4>
+                                        <div class="btn-group">
+                                            <a id="downloadVocabularyBtn" href="#" class="btn btn-outline-success">
+                                                <i class="bi bi-download"></i> 下载词汇表
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <div class="card">
+                                        <div class="card-body overflow-auto" style="max-height: 70vh;">
+                                            <div id="vocabularyText" style="white-space: pre-wrap;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 导出选项卡 -->
+                                <div class="tab-pane fade" id="export" role="tabpanel" aria-labelledby="export-tab">
+                                    <h4 class="mb-3">导出PDF</h4>
+
+                                    <div class="alert alert-info">
+                                        <i class="bi bi-info-circle-fill"></i>
+                                        选择需要导出的页面，然后点击"导出PDF"按钮
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <h5>选择页面</h5>
+                                            <div>
+                                                <button id="selectAllBtn"
+                                                    class="btn btn-sm btn-outline-primary">全选</button>
+                                                <button id="deselectAllBtn"
+                                                    class="btn btn-sm btn-outline-secondary">取消全选</button>
+                                            </div>
+                                        </div>
+
+                                        <div id="pageSelectionContainer" class="d-flex flex-wrap gap-3 mb-4"></div>
+                                    </div>
+
+                                    <div class="text-center">
+                                        <button id="exportPdfBtn" class="btn btn-lg btn-primary px-5">
+                                            <i class="bi bi-file-earmark-pdf"></i> 导出PDF
+                                        </button>
+                                    </div>
+
+                                    <div id="exportResult" class="mt-4 d-none">
+                                        <div class="alert alert-success">
+                                            <i class="bi bi-check-circle-fill"></i>
+                                            PDF导出成功!
+                                        </div>
+
+                                        <div class="text-center">
+                                            <a id="downloadPdfBtn" href="#" class="btn btn-success px-4">
+                                                <i class="bi bi-download"></i> 下载PDF
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="my-5 pt-5 text-muted text-center text-small">
+            <p class="mb-1">&copy; 2023 PDF阅读助手</p>
+            <ul class="list-inline">
+                <li class="list-inline-item"><a href="{{ url_for('about') }}">关于</a></li>
+                <li class="list-inline-item"><a href="{{ url_for('index') }}">返回首页</a></li>
+            </ul>
+        </footer>
+    </div>
+
+    <!-- 加载状态模态框 -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-5">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <h5 id="loadingMessage">正在处理，请稍候...</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const taskId = '{{ task.task_id }}';
+            let imageCount = 0;
+            let currentImageIndex = 0;
+            let selectedPages = [];
+
+            const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+
+            // 获取任务状态
+            fetch(`/api/task/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    imageCount = data.image_count;
+
+                    // 初始化图片预览
+                    if (imageCount > 0) {
+                        initImagePreview();
+                    }
+
+                    // 初始化选项卡内容
+                    initTabContents(data);
+                })
+                .catch(error => {
+                    console.error('获取任务状态出错:', error);
+                });
+
+            // 初始化图片预览
+            function initImagePreview() {
+                const prevBtn = document.getElementById('prevImageBtn');
+                const nextBtn = document.getElementById('nextImageBtn');
+                const pageIndicator = document.getElementById('pageIndicator');
+                const thumbnailsContainer = document.getElementById('imageThumbnails');
+
+                // 设置页面指示器
+                pageIndicator.textContent = `1/${imageCount}`;
+
+                // 加载第一张图片
+                loadImage(0);
+
+                // 创建缩略图
+                for (let i = 0; i < imageCount; i++) {
+                    const thumb = document.createElement('div');
+                    thumb.className = 'thumbnail-item m-1 border rounded cursor-pointer';
+                    thumb.style.width = '80px';
+                    thumb.style.height = '100px';
+                    thumb.dataset.index = i;
+
+                    const img = document.createElement('img');
+                    img.src = `/api/image/${taskId}/${i}`;
+                    img.className = 'img-thumbnail w-100 h-100';
+                    img.style.objectFit = 'cover';
+                    img.alt = `缩略图 ${i + 1}`;
+
+                    thumb.appendChild(img);
+                    thumbnailsContainer.appendChild(thumb);
+
+                    // 点击缩略图切换图片
+                    thumb.addEventListener('click', function () {
+                        loadImage(i);
+                    });
+                }
+
+                // 上一页按钮
+                prevBtn.addEventListener('click', function () {
+                    if (currentImageIndex > 0) {
+                        loadImage(currentImageIndex - 1);
+                    }
+                });
+
+                // 下一页按钮
+                nextBtn.addEventListener('click', function () {
+                    if (currentImageIndex < imageCount - 1) {
+                        loadImage(currentImageIndex + 1);
+                    }
+                });
+
+                // 启用导航按钮
+                prevBtn.disabled = false;
+                nextBtn.disabled = false;
+
+                // 初始化页面选择
+                initPageSelection();
+            }
+
+            // 加载图片
+            function loadImage(index) {
+                currentImageIndex = index;
+                const imageElement = document.getElementById('currentImage');
+                const pageIndicator = document.getElementById('pageIndicator');
+                const prevBtn = document.getElementById('prevImageBtn');
+                const nextBtn = document.getElementById('nextImageBtn');
+
+                // 更新图片
+                imageElement.src = `/api/image/${taskId}/${index}`;
+
+                // 更新页面指示器
+                pageIndicator.textContent = `${index + 1}/${imageCount}`;
+
+                // 更新按钮状态
+                prevBtn.disabled = index === 0;
+                nextBtn.disabled = index === imageCount - 1;
+
+                // 更新缩略图高亮
+                const thumbnails = document.querySelectorAll('.thumbnail-item');
+                thumbnails.forEach(thumb => {
+                    if (parseInt(thumb.dataset.index) === index) {
+                        thumb.classList.add('border-primary');
+                    } else {
+                        thumb.classList.remove('border-primary');
+                    }
+                });
+            }
+
+            // 初始化选项卡内容
+            function initTabContents(data) {
+                // 加载翻译文本
+                if (data.has_translation) {
+                    // 加载原文
+                    fetch(`/api/text/${taskId}/extracted`)
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('extractedText').textContent = data.text;
+                        });
+
+                    // 加载翻译
+                    fetch(`/api/text/${taskId}/translation`)
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('translationText').innerHTML = data.text.replace(/\n/g, '<br>');
+                        });
+
+                    // 设置下载按钮
+                    document.getElementById('downloadTranslationBtn').href = `/download/${taskId}_translation.txt`;
+                } else {
+                    document.getElementById('translation-tab').classList.add('disabled');
+                }
+
+                // 加载词汇
+                if (data.has_vocabulary) {
+                    fetch(`/api/text/${taskId}/vocabulary`)
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('vocabularyText').innerHTML = data.text.replace(/\n/g, '<br>');
+                        });
+
+                    // 设置下载按钮
+                    document.getElementById('downloadVocabularyBtn').href = `/download/${taskId}_vocabulary.txt`;
+                } else {
+                    document.getElementById('vocabulary-tab').classList.add('disabled');
+                }
+            }
+
+            // 初始化页面选择
+            function initPageSelection() {
+                const container = document.getElementById('pageSelectionContainer');
+                selectedPages = Array(imageCount).fill(true);
+
+                for (let i = 0; i < imageCount; i++) {
+                    const pageItem = document.createElement('div');
+                    pageItem.className = 'page-select-item';
+
+                    const checkboxId = `page-${i}`;
+
+                    const checkboxWrapper = document.createElement('div');
+                    checkboxWrapper.className = 'form-check';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'form-check-input';
+                    checkbox.id = checkboxId;
+                    checkbox.checked = true;
+                    checkbox.value = i;
+
+                    const label = document.createElement('label');
+                    label.className = 'form-check-label';
+                    label.htmlFor = checkboxId;
+                    label.textContent = `页面 ${i + 1}`;
+
+                    checkboxWrapper.appendChild(checkbox);
+                    checkboxWrapper.appendChild(label);
+
+                    const thumbContainer = document.createElement('div');
+                    thumbContainer.className = 'border rounded p-1 mt-1';
+                    thumbContainer.style.width = '100px';
+                    thumbContainer.style.height = '120px';
+
+                    const img = document.createElement('img');
+                    img.src = `/api/image/${taskId}/${i}`;
+                    img.className = 'img-thumbnail w-100 h-100';
+                    img.style.objectFit = 'cover';
+                    img.alt = `页面 ${i + 1}`;
+
+                    thumbContainer.appendChild(img);
+
+                    pageItem.appendChild(checkboxWrapper);
+                    pageItem.appendChild(thumbContainer);
+                    container.appendChild(pageItem);
+
+                    // 点击缩略图也可以切换选择状态
+                    thumbContainer.addEventListener('click', function () {
+                        checkbox.checked = !checkbox.checked;
+                        updateSelectedPages();
+                    });
+
+                    // 更新选择状态
+                    checkbox.addEventListener('change', function () {
+                        updateSelectedPages();
+                    });
+                }
+
+                // 全选按钮
+                document.getElementById('selectAllBtn').addEventListener('click', function () {
+                    document.querySelectorAll('.page-select-item input[type="checkbox"]').forEach(cb => {
+                        cb.checked = true;
+                    });
+                    updateSelectedPages();
+                });
+
+                // 取消全选按钮
+                document.getElementById('deselectAllBtn').addEventListener('click', function () {
+                    document.querySelectorAll('.page-select-item input[type="checkbox"]').forEach(cb => {
+                        cb.checked = false;
+                    });
+                    updateSelectedPages();
+                });
+
+                // 导出PDF按钮
+                document.getElementById('exportPdfBtn').addEventListener('click', exportPdf);
+            }
+
+            // 更新选择的页面
+            function updateSelectedPages() {
+                selectedPages = [];
+                document.querySelectorAll('.page-select-item input[type="checkbox"]').forEach(cb => {
+                    if (cb.checked) {
+                        selectedPages.push(parseInt(cb.value));
+                    }
+                });
+
+                // 禁用或启用导出按钮
+                document.getElementById('exportPdfBtn').disabled = selectedPages.length === 0;
+            }
+
+            // 导出PDF
+            function exportPdf() {
+                if (selectedPages.length === 0) {
+                    alert('请至少选择一个页面');
+                    return;
+                }
+
+                // 显示加载状态
+                document.getElementById('loadingMessage').textContent = '正在导出PDF，请稍候...';
+                loadingModal.show();
+
+                // 发送导出请求
+                fetch(`/api/export/${taskId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        selected_indices: selectedPages
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        loadingModal.hide();
+
+                        if (data.success) {
+                            // 显示导出结果
+                            const exportResult = document.getElementById('exportResult');
+                            const downloadBtn = document.getElementById('downloadPdfBtn');
+
+                            exportResult.classList.remove('d-none');
+                            downloadBtn.href = data.download_url;
+
+                            // 滚动到结果区域
+                            exportResult.scrollIntoView({ behavior: 'smooth' });
+                        } else {
+                            alert('导出PDF失败: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        loadingModal.hide();
+                        alert('导出PDF出错: ' + error);
+                    });
+            }
+        });
+    </script>
+</body>
+
+</html>
