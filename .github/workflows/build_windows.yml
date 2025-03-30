@@ -67,6 +67,12 @@ jobs:
         dir dist
         if exist "dist\PDF Reading Assistant" (
           dir "dist\PDF Reading Assistant"
+          
+          REM 单独复制可执行文件到dist根目录
+          copy "dist\PDF Reading Assistant\PDF Reading Assistant (GUI).exe" dist\
+          copy "dist\PDF Reading Assistant\PDF Reading Assistant (Web).exe" dist\
+          
+          REM 创建ZIP包
           powershell "Compress-Archive -Path 'dist\PDF Reading Assistant\*' -DestinationPath 'dist\EnglishPDFAssistant_Windows.zip' -Force"
         ) else (
           echo Warning: Build directory not found
@@ -82,13 +88,19 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: EnglishPDFAssistant
-        path: dist/EnglishPDFAssistant_Windows.zip
+        path: |
+          dist/EnglishPDFAssistant_Windows.zip
+          dist/PDF Reading Assistant (GUI).exe
+          dist/PDF Reading Assistant (Web).exe
         if-no-files-found: warn
 
     - name: Upload to Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        files: dist/EnglishPDFAssistant_Windows.zip
+        files: |
+          dist/EnglishPDFAssistant_Windows.zip
+          dist/PDF Reading Assistant (GUI).exe
+          dist/PDF Reading Assistant (Web).exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
