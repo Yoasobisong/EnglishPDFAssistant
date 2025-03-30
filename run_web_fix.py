@@ -324,11 +324,19 @@ def api_export_pdf(task_id):
         if not selected_images:
             return jsonify({'error': '选择的页面无效'}), 400
         
+        # 验证所有图片是否存在
+        missing_images = [img for img in selected_images if not os.path.exists(img)]
+        if missing_images:
+            error_msg = f"以下图片文件不存在: {', '.join(missing_images)}"
+            print(error_msg)
+            return jsonify({'error': error_msg}), 404
+            
         # 使用PDF文件名和时间戳作为导出文件名
-        if 'output_dir' in task:
+        if 'output_dir' in task and os.path.exists(task['output_dir']):
             output_dir = task['output_dir']
         else:
             output_dir = app.config['UPLOAD_FOLDER']
+            os.makedirs(output_dir, exist_ok=True)
             
         # 提取原始PDF文件名
         pdf_path = task.get('file', '')  # 使用'file'字段获取原始文件路径
@@ -336,20 +344,63 @@ def api_export_pdf(task_id):
         
         output_path = os.path.join(output_dir, f'{pdf_basename}_export.pdf')
         
+        # 调试信息
+        print(f"创建PDF文件: {output_path}")
+        print(f"使用以下图片: {selected_images}")
+        
         # 使用PDFProcessor将图像导出为PDF
-        pdf_processor = PDFProcessor('')  # 空路径，因为不需要加载PDF
-        result_path = pdf_processor.images_to_pdf(selected_images, output_path)
+        from reportlab.lib.pagesizes import letter
+        
+        # 直接使用reportlab创建PDF
+        try:
+            from reportlab.pdfgen import canvas
+            from PIL import Image
+            
+            # 创建输出目录（如果不存在）
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            # 获取第一张图片的尺寸
+            first_img = Image.open(selected_images[0])
+            img_width, img_height = first_img.size
+            first_img.close()
+            
+            # 创建PDF画布
+            c = canvas.Canvas(output_path, pagesize=(img_width, img_height))
+            
+            # 添加每张图片到PDF
+            for img_path in selected_images:
+                img = Image.open(img_path)
+                if img.mode == 'RGBA':
+                    img = img.convert('RGB')
+                width, height = img.size
+                c.setPageSize((width, height))
+                c.drawImage(img_path, 0, 0, width=width, height=height)
+                c.showPage()
+                img.close()
+            
+            # 保存PDF
+            c.save()
+            result_path = output_path
+            
+            print(f"PDF已保存到: {result_path}")
+        except Exception as e:
+            print(f"直接创建PDF失败: {e}")
+            # 尝试使用PDFProcessor
+            pdf_processor = PDFProcessor('')
+            result_path = pdf_processor.images_to_pdf(selected_images, output_path)
         
         # 确保文件存在
         if not os.path.exists(result_path):
-            return jsonify({'error': f'PDF文件未找到: {result_path}'}), 500
+            error_msg = f"PDF文件未找到: {result_path}"
+            print(error_msg)
+            return jsonify({'error': error_msg}), 500
         
         # 更新任务信息
         task['export_pdf'] = result_path
         
         # 调试信息
         print(f"PDF导出成功: {result_path}")
-        print(f"文件存在: {os.path.exists(result_path)}")
+        print(f"文件大小: {os.path.getsize(result_path)} 字节")
         
         return jsonify({
             'success': True,
