@@ -18,6 +18,10 @@ if os.path.exists('src/web/templates'):
     added_files.append(('src/web/templates', 'src/web/templates'))
 if os.path.exists('.env.example'):
     added_files.append(('.env.example', '.'))
+if os.path.exists('桃花.png'):
+    added_files.append(('桃花.png', '.'))
+if os.path.exists('玫瑰.png'):
+    added_files.append(('玫瑰.png', '.'))
 
 print(f"Added files: {added_files}")
 
@@ -74,13 +78,17 @@ b = Analysis(
 pyz_a = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 pyz_b = PYZ(b.pure, b.zipped_data, cipher=block_cipher)
 
+# 设置图标路径
+gui_icon = '桃花.png' if os.path.exists('桃花.png') else None
+web_icon = '玫瑰.png' if os.path.exists('玫瑰.png') else None
+
 # GUI应用可执行文件
 exe_a = EXE(
     pyz_a,
     a.scripts,
     [],
     exclude_binaries=True,
-    name='PDF阅读助手(GUI)',
+    name='PDF Reading Assistant (GUI)',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -91,7 +99,7 @@ exe_a = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon=gui_icon,
 )
 
 # Web应用可执行文件
@@ -100,7 +108,7 @@ exe_b = EXE(
     b.scripts,
     [],
     exclude_binaries=True,
-    name='PDF阅读助手(Web)',
+    name='PDF Reading Assistant (Web)',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -111,7 +119,7 @@ exe_b = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon=web_icon,
 )
 
 # 收集所有文件到一个目录
@@ -127,5 +135,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='PDF阅读助手',
+    name='PDF Reading Assistant',
 ) 

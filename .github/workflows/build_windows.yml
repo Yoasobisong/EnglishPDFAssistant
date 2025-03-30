@@ -51,46 +51,44 @@ jobs:
         pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
         pip install pyinstaller
 
+    - name: Debug environment
+      shell: cmd
+      run: |
+        dir
+        echo "Current directory:"
+        cd
+        
     - name: Build executable
       shell: cmd
       run: |
+        echo "Starting build process..."
         python -m PyInstaller --clean pdf_assistant.spec
-
-        cd dist
-        if exist "PDF Reading Assistant" (
-          powershell "Compress-Archive -Path 'PDF Reading Assistant\*' -DestinationPath 'EnglishPDFAssistant_Windows.zip' -Force"
+        echo "Build completed, checking results..."
+        dir dist
+        if exist "dist\PDF Reading Assistant" (
+          dir "dist\PDF Reading Assistant"
+          powershell "Compress-Archive -Path 'dist\PDF Reading Assistant\*' -DestinationPath 'dist\EnglishPDFAssistant_Windows.zip' -Force"
         ) else (
           echo Warning: Build directory not found
-          dir
+          dir dist
         )
 
-    - name: Upload Release
+    - name: List artifacts
       shell: powershell
       run: |
-        if (Test-Path "dist/EnglishPDFAssistant_Windows.zip") {
-          gh release create "$env:RELEASE_TAG" `
-            dist/EnglishPDFAssistant_Windows.zip `
-            --title "PDF Reading Assistant $env:RELEASE_TAG" `
-            --notes "Windows Version PDF Reading Assistant $($env:RELEASE_TAG)
+        Get-ChildItem -Path "dist" -Recurse | Select-Object FullName
 
-            ## This release includes:
-            
-            - GUI Application: PDF Reading Assistant (GUI).exe
-            - Web Application: PDF Reading Assistant (Web).exe
-            
-            ## Usage Instructions
-            
-            1. Unzip and run PDF Reading Assistant (GUI).exe or PDF Reading Assistant (Web).exe
-            2. Upload PDF file and select processing options
-            3. Wait for processing to complete and view results
-            
-            ## Notes
-            
-            - First-time users need to configure API keys
-            - For detailed instructions, please refer to README.md"
-        } else {
-          echo "Warning: ZIP file not found"
-          dir dist
-        }
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: EnglishPDFAssistant
+        path: dist/EnglishPDFAssistant_Windows.zip
+        if-no-files-found: warn
+
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: dist/EnglishPDFAssistant_Windows.zip
       env:
-        GH_TOKEN: ${{ github.token }}  # Use auto-generated GitHub token 
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
