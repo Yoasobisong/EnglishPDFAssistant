@@ -656,15 +656,16 @@ class PDFProcessor:
             print(f"文本转图片失败: {e}")
             raise Exception(f"将文本转换为图片时出错: {str(e)}")
     
-    def translation_to_pdf(self, original_text, translation_text, output_path, title=None):
+    def translation_to_pdf(self, original_text, translation_text, output_path, title=None, only_translation=True):
         """
-        将原文和翻译渲染为图片并保存为PDF
+        将翻译渲染为图片并保存为PDF
         
         Args:
             original_text (str): 原文文本
             translation_text (str): 翻译文本
             output_path (str): 输出PDF路径
             title (str): PDF标题
+            only_translation (bool): 是否只包含翻译（不包含原文）
             
         Returns:
             str: 输出PDF路径
@@ -679,14 +680,19 @@ class PDFProcessor:
             # 生成标题
             pdf_title = title if title else f"翻译: {base_name}"
             
-            # 将原文转为图片
-            original_img_path = os.path.join(temp_dir, "original.png")
-            self.text_to_image(
-                original_text, 
-                original_img_path, 
-                title="原文",
-                bg_color=(245, 245, 245)  # 浅灰色背景
-            )
+            image_paths = []
+            
+            # 如果需要包含原文，则添加原文图片
+            if not only_translation:
+                # 将原文转为图片
+                original_img_path = os.path.join(temp_dir, "original.png")
+                self.text_to_image(
+                    original_text, 
+                    original_img_path, 
+                    title="原文",
+                    bg_color=(245, 245, 245)  # 浅灰色背景
+                )
+                image_paths.append(original_img_path)
             
             # 将翻译转为图片
             translation_img_path = os.path.join(temp_dir, "translation.png")
@@ -696,9 +702,9 @@ class PDFProcessor:
                 title="翻译",
                 bg_color=(240, 248, 255)  # 浅蓝色背景
             )
+            image_paths.append(translation_img_path)
             
             # 创建PDF
-            image_paths = [original_img_path, translation_img_path]
             pdf_path = self.images_to_pdf(image_paths, output_path)
             
             # 清理临时文件

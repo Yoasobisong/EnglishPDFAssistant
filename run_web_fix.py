@@ -188,7 +188,7 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
             translation = translator.translate(text)
             
             translation_path = os.path.join(task_output_dir, f'{pdf_basename}_translation.txt')
-            with open(translation_path, 'w', encoding='utf-8') as f:
+            with open(translation_path, 'w', encoding='gbk', errors='replace') as f:
                 f.write(translation)
             
             task['translation'] = translation
@@ -199,27 +199,223 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
             task['progress'].append("步骤5/5: 正在生成翻译PDF...")
             task['current_step'] = 5
             
-            # 将翻译保存为图片
-            translation_img_path = os.path.join(task_output_dir, f'{pdf_basename}_translation.png')
-            pdf_processor.text_to_image(
-                translation, 
-                translation_img_path, 
-                title=f"《{pdf_basename}》翻译",
-                font_size=16
-            )
-            task['translation_img_path'] = translation_img_path
+            # 修改：不生成翻译图片，直接使用文本生成PDF
+            from reportlab.lib.pagesizes import A4
+            from reportlab.pdfgen import canvas
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.platypus import SimpleDocTemplate, Paragraph
+            from reportlab.lib.units import inch
+            from reportlab.platypus.flowables import Spacer
+            from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
             
-            # 将原文和翻译生成对照PDF
+            # 设置输出PDF路径
             translation_pdf_path = os.path.join(task_output_dir, f'{pdf_basename}_translation.pdf')
-            pdf_processor.translation_to_pdf(
-                text, 
-                translation, 
-                translation_pdf_path, 
-                title=f"《{pdf_basename}》翻译"
-            )
-            task['translation_pdf_path'] = translation_pdf_path
             
-            task['progress'].append(f"✓ 翻译PDF生成完成，已保存到 {os.path.basename(translation_pdf_path)}")
+            try:
+                # 尝试注册中文字体
+                try:
+                    # 尝试使用常见的中文字体
+                    font_paths = [
+                        "C:\\Windows\\Fonts\\simhei.ttf",  # Windows黑体
+                        "C:\\Windows\\Fonts\\simsun.ttc",  # Windows宋体
+                        "C:\\Windows\\Fonts\\msyh.ttf",    # Windows微软雅黑
+                        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",  # Linux文泉驿微米黑
+                        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",    # Linux文泉驿正黑
+                        "/usr/share/fonts/truetype/arphic/uming.ttc",      # Linux文鼎明体
+                        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",  # Google Noto Sans CJK
+                        "/System/Library/Fonts/PingFang.ttc",  # macOS苹方
+                        "/System/Library/Fonts/STHeiti Light.ttc",  # macOS黑体
+                        "/System/Library/Fonts/Hiragino Sans GB.ttc",  # macOS冬青黑体
+                        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",  # Linux
+                    ]
+                    
+                    font_registered = False
+                    registered_fonts = []
+                    
+                    for path in font_paths:
+                        if os.path.exists(path):
+                            font_name = os.path.basename(path).split('.')[0]
+                            try:
+                                pdfmetrics.registerFont(TTFont(font_name, path))
+                                registered_fonts.append(font_name)
+                                font_registered = True
+                                print(f"成功注册字体: {font_name}")
+                            except Exception as font_err:
+                                print(f"注册字体 {font_name} 失败: {font_err}")
+                    
+                    # 记录已注册的字体
+                    if registered_fonts:
+                        print(f"已注册字体: {', '.join(registered_fonts)}")
+                    else:
+                        print("未能注册任何字体")
+                except Exception as e:
+                    print(f"注册字体失败: {e}")
+                    font_registered = False
+                
+                # 创建PDF文档
+                doc = SimpleDocTemplate(
+                    translation_pdf_path,
+                    pagesize=A4,
+                    rightMargin=72,
+                    leftMargin=72,
+                    topMargin=72,
+                    bottomMargin=72
+                )
+                
+                # 创建样式
+                styles = getSampleStyleSheet()
+                if font_registered and registered_fonts:
+                    primary_font = registered_fonts[0]  # 使用第一个成功注册的字体
+                    title_style = ParagraphStyle(
+                        'Title',
+                        parent=styles['Title'],
+                        fontName=primary_font,
+                        fontSize=18,
+                        alignment=1,  # 居中
+                        spaceAfter=20,
+                        encoding='utf-8'  # 确保使用UTF-8编码
+                    )
+                    normal_style = ParagraphStyle(
+                        'Normal',
+                        parent=styles['Normal'],
+                        fontName=primary_font,
+                        fontSize=12,
+                        alignment=TA_JUSTIFY,
+                        firstLineIndent=20,
+                        encoding='utf-8'  # 确保使用UTF-8编码
+                    )
+                else:
+                    # 默认样式
+                    title_style = styles['Title']
+                    normal_style = styles['Normal']
+                
+                # 创建内容
+                story = []
+                
+                # 添加标题
+                story.append(Paragraph(f"《{pdf_basename}》翻译", title_style))
+                story.append(Spacer(1, 0.2 * inch))
+                
+                # 处理翻译文本，添加段落
+                paragraphs = translation.split('\n')
+                for para in paragraphs:
+                    if para.strip():
+                        # 修改：确保文本正确编码，防止字符丢失
+                        try:
+                            # 确保所有字符都能被正确处理
+                            para_text = para
+                            # 使用XML转义处理特殊字符
+                            from xml.sax.saxutils import escape
+                            para_text = escape(para_text)
+                            story.append(Paragraph(para_text, normal_style))
+                            story.append(Spacer(1, 0.1 * inch))
+                        except Exception as e:
+                            print(f"处理段落时出错: {e}")
+                            # 如果处理失败，尝试简单处理后添加
+                            story.append(Paragraph(str(para.encode('utf-8', errors='replace').decode('utf-8', errors='replace')), normal_style))
+                            story.append(Spacer(1, 0.1 * inch))
+                
+                # 生成PDF
+                doc.build(story)
+                
+                task['translation_pdf_path'] = translation_pdf_path
+                task['progress'].append(f"✓ 翻译PDF生成完成，已保存到 {os.path.basename(translation_pdf_path)}")
+            except Exception as e:
+                error_msg = str(e)
+                task['progress'].append(f"❌ 翻译PDF生成失败: {error_msg}")
+                try:
+                    # 备用方案：使用更简单的方法生成PDF
+                    task['progress'].append("尝试使用简易方法生成PDF...")
+                    
+                    # 导入所需模块
+                    from fpdf import FPDF
+                    
+                    # 创建PDF对象 - 使用Unicode支持
+                    pdf = FPDF(orientation='P', unit='mm', format='A4')
+                    pdf.set_auto_page_break(auto=True, margin=15)
+                    pdf.add_page()
+                    
+                    # 设置中文支持 - 使用fpdf2的内置字体支持
+                    try:
+                        # 尝试加载系统中文字体
+                        font_found = False
+                        font_paths = [
+                            '/usr/share/fonts/truetype/arphic/uming.ttc',  # Arphic
+                            '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',  # WQY
+                            '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf',  # Droid
+                            'C:\\Windows\\Fonts\\simhei.ttf',  # Windows黑体
+                            'C:\\Windows\\Fonts\\simsun.ttc',  # Windows宋体
+                            'C:\\Windows\\Fonts\\msyh.ttf',    # Windows微软雅黑
+                        ]
+                        
+                        for font_path in font_paths:
+                            if os.path.exists(font_path):
+                                font_name = os.path.basename(font_path).split('.')[0]
+                                pdf.add_font(font_name, '', font_path, uni=True)
+                                pdf.set_font(font_name, '', 12)
+                                font_found = True
+                                task['progress'].append(f"✓ 成功加载字体: {font_name}")
+                                break
+                        
+                        if not font_found:
+                            # 使用FPDF2的内置字体，支持基本拉丁文和一些非拉丁文字符
+                            pdf.set_font("Helvetica", size=12)
+                            task['progress'].append("⚠️ 未找到中文字体，使用Helvetica，可能无法正确显示中文")
+                            
+                    except Exception as font_error:
+                        task['progress'].append(f"⚠️ 字体加载失败: {str(font_error)}，使用默认字体")
+                        pdf.set_font("Helvetica", size=12)
+                    
+                    # 添加标题
+                    original_font_size = pdf.font_size
+                    pdf.set_font_size(18)
+                    title = f"《{pdf_basename}》翻译"
+                    
+                    # 计算标题宽度并居中
+                    title_width = pdf.get_string_width(title)
+                    page_width = pdf.w - 2*pdf.l_margin
+                    pdf.set_x((page_width - title_width) / 2 + pdf.l_margin)
+                    
+                    pdf.cell(title_width, 10, title, ln=1, align='C')
+                    pdf.ln(10)
+                    
+                    # 重新设置正文字体大小
+                    pdf.set_font_size(original_font_size)
+                    
+                    # 添加正文内容
+                    paragraphs = translation.split('\n')
+                    for para in paragraphs:
+                        if para.strip():
+                            # 确保参数是字符串类型
+                            para_text = str(para)
+                            # 多行文本
+                            pdf.multi_cell(0, 8, para_text)
+                            pdf.ln(4)
+                    
+                    # 保存PDF
+                    pdf.output(translation_pdf_path)
+                    
+                    task['translation_pdf_path'] = translation_pdf_path
+                    task['progress'].append(f"✓ 使用简易方法生成翻译PDF完成，已保存到 {os.path.basename(translation_pdf_path)}")
+                except Exception as e2:
+                    task['progress'].append(f"❌ 简易方法生成PDF也失败: {str(e2)}")
+                    # 最后尝试原始图片转PDF方法
+                    try:
+                        task['progress'].append("尝试使用原始图片转PDF方法...")
+                        # 将原文和翻译生成对照PDF
+                        pdf_processor.translation_to_pdf(
+                            text, 
+                            translation, 
+                            translation_pdf_path, 
+                            title=f"《{pdf_basename}》翻译",
+                            only_translation=True  # 只包含翻译内容，不包含原文
+                        )
+                        task['translation_pdf_path'] = translation_pdf_path
+                        task['progress'].append(f"✓ 使用图片转PDF方法生成翻译完成，已保存到 {os.path.basename(translation_pdf_path)}")
+                    except Exception as e3:
+                        task['progress'].append(f"❌ 所有PDF生成方法均失败: {str(e3)}")
             
         except Exception as e:
             error_msg = str(e)
@@ -244,7 +440,7 @@ def process_pdf_thread(task_id, pdf_path, extract_method, translator_type):
                 vocabulary = vocabulary_extractor.extract(text)
             
             vocabulary_path = os.path.join(task_output_dir, f'{pdf_basename}_vocabulary.txt')
-            with open(vocabulary_path, 'w', encoding='utf-8') as f:
+            with open(vocabulary_path, 'w', encoding='gbk', errors='replace') as f:
                 f.write(vocabulary)
             
             task['vocabulary'] = vocabulary
